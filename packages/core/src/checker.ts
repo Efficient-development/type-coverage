@@ -2,11 +2,13 @@ import * as ts from 'typescript'
 
 import { FileAnyInfoKind, FileContext } from './interfaces'
 
+/* 收集所有 any  */
 function collectAny(node: ts.Node, context: FileContext, kind: FileAnyInfoKind) {
   const { file, sourceFile, typeCheckResult, ingoreMap, ignoreUnreadAnys, debug, processAny } = context
   if (processAny !== undefined) {
     return processAny(node, context)
   }
+  /* 计算行号和位置 */
   const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile))
   if (ingoreMap[file] && ingoreMap[file]?.has(line)) {
     return false
@@ -25,14 +27,18 @@ function collectAny(node: ts.Node, context: FileContext, kind: FileAnyInfoKind) 
   return true
 }
 
+/* 收集所有的 notAny */
 function collectNotAny(node: ts.Node, { file, sourceFile, typeCheckResult, debug }: FileContext, type: ts.Type) {
   typeCheckResult.correctCount++
+
+  /* 在debug模式下，打印具体的信息 */
   if (debug) {
     const { line, character } = ts.getLineAndCharacterOfPosition(sourceFile, node.getStart(sourceFile))
     console.log(`type !== any: ${file}:${line + 1}:${character + 1}: ${node.getText(sourceFile)} ${node.kind}(kind) ${type.flags}(flag) ${(type as unknown as { intrinsicName: string }).intrinsicName || ''}`)
   }
 }
 
+/* 收集器 */
 function collectData(node: ts.Node, context: FileContext) {
   const types: ts.Type[] = []
   const type = context.checker.getTypeAtLocation(node)
@@ -171,10 +177,12 @@ export function checkNode(node: ts.Node | undefined, context: FileContext): void
     return
   }
 
+  /* 关键字 */
   if (node.kind === ts.SyntaxKind.ThisKeyword) {
     collectData(node, context)
     return
   }
+  /* 标识符 */
   if (ts.isIdentifier(node)) {
     if (context.catchVariables[node.escapedText as string]) {
       return
@@ -182,6 +190,7 @@ export function checkNode(node: ts.Node | undefined, context: FileContext): void
     collectData(node, context)
     return
   }
+
   if (ts.isQualifiedName(node)) {
     checkNode(node.left, context)
     checkNode(node.right, context)
